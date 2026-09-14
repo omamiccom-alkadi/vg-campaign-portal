@@ -1,0 +1,47 @@
+# Role & Project Context
+You are a Senior Full-Stack Engineer and Supabase/PostgreSQL Architect. 
+We are building a multi-tenant "Client Campaign Portal" MVP for 3 distinct brands.
+Prioritize data integrity, system security, and strict business logic over flashy UI.
+
+# 1. CRITICAL: Strict Data Isolation (Multi-tenancy)
+- ALL database interactions MUST be isolated by brand.
+- NEVER fetch data without filtering by the user's `brand_id`.
+- Supabase Row Level Security (RLS) is MANDATORY. Write explicit RLS policies for EVERY table to ensure users can ONLY `SELECT`, `INSERT`, `UPDATE`, or `DELETE` rows where `brand_id` matches their authenticated session context.
+- Assume that a security audit will actively try to query another brand's data.
+- Ship at least one automated test (e.g. pgTAP or an integration test signed in as a real user) that FAILS if brand isolation is ever removed or weakened. This is a required deliverable, not optional.
+
+# 2. Concurrency & Idempotency (Zero Double-Sends)
+- Sending campaigns involves real money. NEVER allow a campaign to be sent twice.
+- The ONLY acceptable protection against double-sends is a database-level constraint (e.g. a partial UNIQUE INDEX on campaign_id for non-terminal statuses). 
+- Do NOT implement "check status, then update status" logic in application code as the primary safeguard — this is a race condition, not a fix, because two concurrent requests can both pass the check before either writes the new status.
+- Data imports MUST be idempotent. Use `UPSERT` (`INSERT ... ON CONFLICT`) based on a unique constraint (`brand_id` + `email`) to prevent duplicate contacts when the same CSV is uploaded twice.
+
+# 3. Handling Out-of-Order Webhooks
+- The external messaging provider will send delivery/read receipts that are deliberately messy and out of chronological order, regardless of what its docs claim.
+- ALWAYS use the event's actual timestamp (from the payload) to determine the latest state of a contact/message — never rely on HTTP arrival order.
+- Deduplicate incoming events using the provider's own event id as a unique constraint.
+
+# 4. Accuracy & Transparency
+- "A quietly wrong number is worse than no number."
+- Ensure all dashboard aggregations (totals, signups, campaign performance) are mathematically flawless.
+- If counting logic is ambiguous, leave a comment explaining the chosen approach and surface that logic in the UI.
+- The recipient count shown on the send-confirmation screen must be frozen (snapshotted) at confirmation time and must exactly match what is actually sent — never recompute it live after confirmation.
+
+# 5. General Security & Best Practices
+- NEVER hardcode API keys or secrets. Always use environment variables (`.env`).
+- The messaging provider's API key must NEVER be exposed to the client. It is only ever used server-side, inside a Supabase Edge Function.
+- For the shareable link feature: generate a secure, unguessable token/UUID, hash the password before storing it (never store plaintext), and strictly scope the query to return ONLY that specific campaign's results — nothing else must be reachable through that link.
+- Validate all user inputs. Reject bad data instantly; do not store it.
+- Display clear, non-technical error messages when things fail (e.g., partial data loads).
+
+# 6. Tech Stack Guidelines
+- Backend: Supabase (PostgreSQL, Auth, Edge Functions for secret API calls).
+- Styling: Use Tailwind CSS for a clean, responsive, and professional UI. Ensure it works seamlessly on both mobile and desktop.
+- Code style: Write clean, modular, and testable code.
+
+# 7. Non-negotiable Guardrails (do not "simplify" these away)
+- Never write RLS policies without both USING and WITH CHECK clauses where applicable (WITH CHECK is required on INSERT and UPDATE).
+- Never derive brand_id from client input; always derive it server-side from auth.uid() via the profiles table.
+- All webhook/event processing must order by event_timestamp from the payload, never by arrival/received_at time.
+- All send operations must be protected by a DB-level unique constraint, not application-level state checks.
+- Ask before modifying any RLS policy, the profiles table, the campaign_sends table, or any unique constraint used for idempotency.
