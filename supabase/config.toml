@@ -444,3 +444,9 @@ verify_jwt = false
 # provider key is so much as read from the environment.
 [functions.dispatch-send]
 verify_jwt = false
+
+# Reading delivery reports is brand-scoped and changes nothing an analyst
+# should not see, so this one permits any signed-in member of the brand. The
+# token is still required and still verified inside the function.
+[functions.poll-send-events]
+verify_jwt = false

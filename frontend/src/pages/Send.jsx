@@ -37,6 +37,8 @@ export default function Send() {
   const [result, setResult] = useState(null);
 
   const [history, setHistory] = useState([]);
+  const [polling, setPolling] = useState(false);
+  const [pollResult, setPollResult] = useState('');
 
   const loadDrafts = useCallback(async () => {
     if (!brandId) return;
@@ -234,6 +236,51 @@ export default function Send() {
     setResult({ failed: false, sendId, ...data });
     void loadHistory();
     void loadDrafts();
+  };
+
+  // ---------------------------------------------------------------------------
+  // Delivery reports
+  // ---------------------------------------------------------------------------
+  // The dispatcher does not push, so reports are pulled. Safe to press as often
+  // as you like: repeats are absorbed by the unique index on
+  // (brand_id, provider_event_id), and state is derived from each event's own
+  // timestamp rather than when it arrived.
+  const checkForUpdates = async (sendId) => {
+    setPolling(true);
+    setPollResult('');
+
+    const { data, error: fnError } = await supabase.functions.invoke('poll-send-events', {
+      body: sendId ? { sendId } : {},
+    });
+
+    if (fnError) {
+      let message = 'Could not fetch delivery reports.';
+      if (fnError.context && typeof fnError.context.json === 'function') {
+        try {
+          const payload = await fnError.context.json();
+          if (payload?.error) message = payload.error;
+        } catch {
+          /* keep the generic message */
+        }
+      }
+      setPollResult(message);
+    } else if ((data?.stored ?? 0) === 0 && (data?.duplicates ?? 0) === 0) {
+      setPollResult('No delivery reports yet. The provider may not have processed the batch.');
+    } else {
+      const parts = [`${fmt(data.stored)} new event${data.stored === 1 ? '' : 's'} stored`];
+      if (data.duplicates > 0) parts.push(`${fmt(data.duplicates)} already had`);
+      if (data.skipped?.length > 0) {
+        parts.push(
+          `${fmt(data.skipped.reduce((sum, s) => sum + s.count, 0))} not stored (${data.skipped
+            .map((s) => s.code)
+            .join(', ')})`
+        );
+      }
+      setPollResult(`${parts.join(', ')}. The dashboard reflects these straight away.`);
+    }
+
+    setPolling(false);
+    void loadHistory();
   };
 
   const selectedDraft = useMemo(
@@ -484,24 +531,65 @@ export default function Send() {
             </p>
           )}
 
-          <button
-            type="button"
-            onClick={() => {
-              reset();
-              setCampaignId('');
-            }}
-            className="mt-4 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Done
-          </button>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            {!result.failed && (
+              <button
+                type="button"
+                onClick={() => void checkForUpdates(result.sendId)}
+                disabled={polling}
+                className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:bg-slate-300"
+              >
+                {polling ? 'Checking\u2026' : 'Check for updates'}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                reset();
+                setCampaignId('');
+                setPollResult('');
+              }}
+              className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Done
+            </button>
+          </div>
+
+          {!result.failed && (
+            <p className="mt-2 text-xs text-slate-600">
+              Delivery, bounce, open and unsubscribe reports arrive over time, so they will not
+              all be here at once. Checking again later is safe &mdash; a report that has already
+              been recorded is not recorded twice.
+            </p>
+          )}
+
+          {pollResult && <p className="mt-2 text-sm text-slate-800">{pollResult}</p>}
         </section>
       )}
 
       <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-medium text-slate-800">Recent live sends</h2>
-        <p className="mt-1 text-xs text-slate-500">
-          Imported historical batches are not shown here &mdash; these are sends this app made.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-medium text-slate-800">Recent live sends</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Imported historical batches are not shown here &mdash; these are sends this app
+              made.
+            </p>
+          </div>
+          {history.length > 0 && (
+            <button
+              type="button"
+              onClick={() => void checkForUpdates(null)}
+              disabled={polling}
+              className="shrink-0 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:text-slate-400"
+            >
+              {polling ? 'Checking\u2026' : 'Check all for updates'}
+            </button>
+          )}
+        </div>
+        {pollResult && phase !== 'done' && (
+          <p className="mt-2 text-sm text-slate-800">{pollResult}</p>
+        )}
 
         {history.length === 0 ? (
           <p className="mt-3 text-sm text-slate-600">No campaigns have been sent from here yet.</p>
