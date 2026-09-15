@@ -74,6 +74,67 @@ export default function Campaigns() {
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState('');
 
+  const [sharing, setSharing] = useState('');
+  const [share, setShare] = useState(null);
+  const [shareError, setShareError] = useState('');
+  const [copied, setCopied] = useState('');
+
+  // Only owners get the control. create_shared_link is security invoker, so an
+  // analyst's own RLS decides whether it can run — this is presentation, not
+  // the protection.
+  const isOwner = profile?.role === 'owner';
+
+  // Generated in the browser with the platform CSPRNG, handed straight to
+  // create_shared_link, and never stored anywhere locally. The database keeps
+  // only a bcrypt hash, which is why this is the one and only time the
+  // password can be read: nothing can recover it afterwards, not even us.
+  // Ambiguous glyphs (0/O, 1/l/I) are left out because this gets read aloud
+  // and retyped by people.
+  function generatePassword() {
+    const alphabet = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const bytes = new Uint32Array(20);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (n) => alphabet[n % alphabet.length]).join('');
+  }
+
+  const shareCampaign = async (campaign) => {
+    setSharing(campaign.id);
+    setShareError('');
+    setShare(null);
+    setCopied('');
+
+    const password = generatePassword();
+
+    const { data: token, error } = await supabase.rpc('create_shared_link', {
+      p_campaign_id: campaign.id,
+      p_password: password,
+    });
+
+    if (error || !token) {
+      setShareError(
+        'Could not create a shareable link for this campaign. Nothing was shared.'
+      );
+      setSharing('');
+      return;
+    }
+
+    setShare({
+      campaignName: campaign.name,
+      url: `${window.location.origin}/shared/${token}`,
+      password,
+    });
+    setSharing('');
+  };
+
+  const copy = async (value, which) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(which);
+    } catch {
+      setCopied('');
+    }
+  };
+
   const inputRef = useRef(null);
 
   const loadCampaigns = useCallback(
@@ -1094,6 +1155,74 @@ export default function Campaigns() {
             </p>
           ) : (
             <>
+              {shareError && (
+                <p role="alert" className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+                  {shareError}
+                </p>
+              )}
+
+              {share && (
+                <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-4">
+                  <p className="text-sm font-medium text-amber-900">
+                    Shareable link for &ldquo;{share.campaignName}&rdquo;
+                  </p>
+                  <p className="mt-1 text-xs text-amber-900">
+                    Copy the password now. It is stored only as a hash, so this is the one and
+                    only time it can be shown &mdash; if it is lost, share the campaign again to
+                    get a new link.
+                  </p>
+
+                  <div className="mt-3 space-y-2">
+                    <div>
+                      <span className="block text-xs uppercase tracking-wide text-amber-800">
+                        Link
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 truncate rounded border border-amber-200 bg-white px-2 py-1 text-xs">
+                          {share.url}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => void copy(share.url, 'url')}
+                          className="shrink-0 rounded border border-amber-300 bg-white px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                        >
+                          {copied === 'url' ? 'Copied' : 'Copy'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="block text-xs uppercase tracking-wide text-amber-800">
+                        Password
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 rounded border border-amber-200 bg-white px-2 py-1 font-mono text-sm">
+                          {share.password}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => void copy(share.password, 'password')}
+                          className="shrink-0 rounded border border-amber-300 bg-white px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                        >
+                          {copied === 'password' ? 'Copied' : 'Copy'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShare(null);
+                      setCopied('');
+                    }}
+                    className="mt-3 text-xs font-medium text-amber-900 underline"
+                  >
+                    Hide
+                  </button>
+                </div>
+              )}
+
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left text-sm">
                   <thead className="border-b border-slate-200 text-xs text-slate-500">
@@ -1107,6 +1236,7 @@ export default function Campaigns() {
                         Reported sent
                       </th>
                       <th className="px-2 py-2 font-medium">Sent at</th>
+                      {isOwner && <th className="px-2 py-2 font-medium">Share</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1127,6 +1257,22 @@ export default function Campaigns() {
                             ? new Date(campaign.sent_at_utc).toLocaleString()
                             : '—'}
                         </td>
+                        {isOwner && (
+                          <td className="px-2 py-2">
+                            {campaign.status === 'sent' ? (
+                              <button
+                                type="button"
+                                onClick={() => void shareCampaign(campaign)}
+                                disabled={sharing === campaign.id}
+                                className="text-xs font-medium text-slate-700 underline hover:text-slate-900 disabled:text-slate-400 disabled:no-underline"
+                              >
+                                {sharing === campaign.id ? 'Creating…' : 'Share results'}
+                              </button>
+                            ) : (
+                              <span className="text-xs text-slate-400">—</span>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
