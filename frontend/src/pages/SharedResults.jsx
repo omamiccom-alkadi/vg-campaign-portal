@@ -48,12 +48,13 @@ export default function SharedResults() {
   };
 
   if (status === 'ok' && results) {
-    // No recorded send means this campaign's results were imported from
-    // historical records rather than sent through this app. That single fact
-    // explains both blanks below: the import carries no recipient list, and the
-    // historical event feed carries no delivery receipts (it records opens,
-    // clicks, bounces, complaints and unsubscribes only).
-    const imported = results.recipient_count == null;
+    // Two independent questions, and conflating them is what produced the bug
+    // this page was fixed for twice. A campaign can have a real recipient count
+    // from the send log and still have no delivery receipts, so "was the
+    // audience size recorded" cannot stand in for "was delivery tracked". The
+    // database answers each one separately; read each one separately.
+    const recipientsRecorded = results.recipient_count != null;
+    const deliveryTracked = results.delivery_tracked === true;
 
     return (
       <div className="min-h-screen bg-slate-100 px-4 py-10">
@@ -67,22 +68,22 @@ export default function SharedResults() {
           <dl className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
             <div>
               <dt className="text-xs uppercase tracking-wide text-slate-500">Recipients</dt>
-              {imported ? (
-                <dd className="text-lg font-medium text-slate-400">{NOT_RECORDED}</dd>
-              ) : (
+              {recipientsRecorded ? (
                 <dd className="text-2xl font-semibold text-slate-900">
                   {fmt(results.recipient_count)}
                 </dd>
+              ) : (
+                <dd className="text-lg font-medium text-slate-400">{NOT_RECORDED}</dd>
               )}
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-slate-500">Delivered</dt>
-              {imported ? (
-                <dd className="text-lg font-medium text-slate-400">{NOT_TRACKED}</dd>
-              ) : (
+              {deliveryTracked ? (
                 <dd className="text-2xl font-semibold text-slate-900">
                   {fmt(results.delivered_count)}
                 </dd>
+              ) : (
+                <dd className="text-lg font-medium text-slate-400">{NOT_TRACKED}</dd>
               )}
             </div>
             <div>
@@ -114,21 +115,27 @@ export default function SharedResults() {
               Two careful people could count these differently, so the page says
               which way it counted. */}
           <div className="mt-6 border-t border-slate-200 pt-4 text-xs leading-relaxed text-slate-500">
-            {imported ? (
-              <p>
-                This campaign was sent before it was recorded in this portal, and its results were
-                imported from historical records afterwards. Those records list the engagement
-                below, but they do not include the size of the audience or per-message delivery
-                receipts, so{' '}
-                <span className="font-medium text-slate-700">Recipients</span> and{' '}
-                <span className="font-medium text-slate-700">Delivered</span> are shown as
-                unavailable rather than as zero. Reading them as zero would be wrong: the figures
-                were never captured, not measured as none.
-              </p>
-            ) : (
+            {recipientsRecorded ? (
               <p>
                 <span className="font-medium text-slate-700">Recipients</span> is the count frozen
                 when the send was approved, not a later recount of the audience.
+              </p>
+            ) : (
+              <p>
+                <span className="font-medium text-slate-700">Recipients</span> is shown as
+                unavailable because no audience size was recorded for this campaign &mdash; it was
+                sent before this portal tracked it. Reading it as zero would be wrong: the figure
+                was never captured, not measured as none.
+              </p>
+            )}
+
+            {!deliveryTracked && (
+              <p className="mt-2">
+                <span className="font-medium text-slate-700">Delivered</span> is shown as
+                unavailable for the same reason. The historical records behind this campaign list
+                opens, clicks, bounces, complaints and unsubscribes, but they carry no
+                per-message delivery receipts, so no delivered figure exists to report. The
+                engagement figures below are real counts.
               </p>
             )}
             <p className="mt-2">
