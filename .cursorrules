@@ -45,3 +45,29 @@ Prioritize data integrity, system security, and strict business logic over flash
 - All webhook/event processing must order by event_timestamp from the payload, never by arrival/received_at time.
 - All send operations must be protected by a DB-level unique constraint, not application-level state checks.
 - Ask before modifying any RLS policy, the profiles table, the campaign_sends table, or any unique constraint used for idempotency.
+## Commit Discipline (Time-Sensitive Project)
+
+Given the project deadline, commit history matters for the final submission
+("real history" is an explicit grading criterion). Follow these rules for
+every task from now on:
+
+1. After completing any self-contained unit of work (a new feature, a bug
+   fix, a schema migration, a UI page), STOP and propose a commit before
+   moving to the next task. Do not silently continue accumulating changes.
+
+2. Propose a specific, descriptive commit message following this pattern:
+   `<type>: <short description>`
+   Types: feat, fix, chore, test, docs, refactor
+   Example: "feat: build Dashboard page with contactable count and signup chart"
+
+3. Never bundle unrelated changes into one commit. If a task naturally
+   produces two distinct pieces of work (e.g. a migration AND a UI change
+   that depends on it), propose them as two separate sequential commits,
+   in dependency order.
+
+4. Before proposing a commit, briefly list which files changed and why, so
+   the commit message stays accurate and specific rather than generic.
+
+5. Ask "Should I commit this now?" explicitly after each completed unit —
+   do not assume permission, but do prompt proactively rather than waiting
+   to be asked.
