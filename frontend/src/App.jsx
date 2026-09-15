@@ -7,6 +7,7 @@ import Contacts from './pages/Contacts';
 import Campaigns from './pages/Campaigns';
 import Events from './pages/Events';
 import Sends from './pages/Sends';
+import Send from './pages/Send';
 
 export default function App() {
   return (
@@ -52,6 +53,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Sends />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/send"
+            element={
+              <ProtectedRoute>
+                <Send />
               </ProtectedRoute>
             }
           />

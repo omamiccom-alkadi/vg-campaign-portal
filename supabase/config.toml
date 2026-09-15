@@ -437,3 +437,10 @@ verify_jwt = false
 # RLS, owner role required, all before the service-role client exists.
 [functions.import-send-log]
 verify_jwt = false
+
+# Same preflight reason again. Authentication inside the function is stricter
+# than the gate it replaces: token required, verified with auth.getUser(),
+# brand_id read from profiles under RLS, and owner role required before the
+# provider key is so much as read from the environment.
+[functions.dispatch-send]
+verify_jwt = false

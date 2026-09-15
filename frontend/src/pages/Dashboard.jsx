@@ -215,6 +215,14 @@ export default function Dashboard() {
             <Link to="/sends" className="text-slate-700 hover:underline">
               Sends
             </Link>
+            {/* Analysts never see the way in. RLS and the Edge Function both
+                refuse them anyway, but offering a door that cannot open is
+                its own small dishonesty. */}
+            {profile?.role === 'owner' && (
+              <Link to="/send" className="font-medium text-red-700 hover:underline">
+                Send a campaign
+              </Link>
+            )}
             <button
               type="button"
               onClick={() => {
