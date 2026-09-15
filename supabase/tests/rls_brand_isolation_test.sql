@@ -4,7 +4,7 @@
 -- Run with:
 --   supabase test db          (or)   pg_prove -d "$DB_URL" tests/*.sql
 --
--- BASELINE: 42/42 passing. The original 33 were established by two runs —
+-- BASELINE: 45/45 passing. The original 33 were established by two runs —
 -- locally against `supabase start`, and once against a throwaway cloud project
 -- (since deleted) to confirm identical behaviour on hosted Postgres. Tests 16
 -- and 17, the composite-FK cross-brand guards, arrived with
@@ -12,8 +12,11 @@
 -- locally. The four message_events guards arrived with
 -- 20260915170000_events_per_brand_dedupe_and_campaign_link.sql, also local
 -- only so far, as did the three is_backfill guards that arrived with
--- 20260915220000_close_is_backfill_policy_gap.sql. A count below 42 is a
--- regression to investigate, not a suite that has never been executed.
+-- 20260915220000_close_is_backfill_policy_gap.sql. Test 35, the shared-results
+-- event-linkage guard, arrived with
+-- 20260916002000_fix_shared_results_event_join.sql, also local only so far.
+-- A count below 45 is a regression to investigate, not a suite that has never
+-- been executed.
 --
 -- Tests 16 and 17 were mutation-checked rather than merely observed passing:
 -- rewriting both composite FKs as single-column references made exactly those
@@ -37,6 +40,15 @@
 -- its own: it exists to prove the exemption did not quietly release the live
 -- slot, so it must keep passing throughout.
 --
+-- Test 35 was mutation-checked too, and that check is why it exists. Reverting
+-- get_shared_campaign_results to its campaign_send_id-only join made 35 fail
+-- with `have: 0, want: 1` and left the other 42 passing — which is precisely
+-- the problem: the suite had been fully green while every engagement figure on
+-- a historical campaign read zero on the public share page. Row-count, name and
+-- leakage assertions cannot see a wrong number. 35 is the one that can, so it
+-- guards in both directions: 0 means the backfill linkage was dropped again,
+-- 2 means the join widened far enough to count a sibling campaign's events.
+--
 -- This file is the audit that .cursorrules demands: it FAILS the moment brand
 -- isolation is weakened. Specifically it fails if any of these regress:
 --   * a policy loses its brand_id predicate
@@ -56,6 +68,9 @@
 --   * the share-link function starts returning brand/campaign identifiers
 --   * its failure messages start distinguishing "bad token" from "bad password"
 --   * revoked or expired links start resolving
+--   * its event join stops counting backfilled history, or starts counting a
+--     campaign other than the linked one — both are wrong numbers shown to an
+--     external client, which .cursorrules rates worse than showing none
 --
 -- It runs as a superuser to seed fixtures, then drops to the `authenticated`
 -- role with a forged JWT claim for each user, and to the bare `anon` role for
@@ -67,7 +82,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(42);
+select plan(45);
 
 -- -----------------------------------------------------------------------------
 -- Fixtures: two brands, one owner + one analyst each
@@ -508,12 +523,34 @@ select throws_ok(
 select public.login_as(:'owner_a');
 
 select public.create_shared_link(:'camp_a', :'share_pw')                             as tok_ok      \gset
+-- camp_a2 deliberately has no campaign_sends row at all: every attempt to give
+-- it one earlier in section D was supposed to be rejected. That makes it the
+-- fixture for "no send was ever recorded".
+select public.create_shared_link(:'camp_a2', :'share_pw')                            as tok_nosend  \gset
 select public.create_shared_link(:'camp_a', :'share_pw')                             as tok_revoked \gset
 select public.create_shared_link(:'camp_a', :'share_pw', now() - interval '1 hour')  as tok_expired \gset
 
 -- Revoke the second link out-of-band, as the service role would.
 select public.logout();
 update public.shared_links set revoked_at = now() where token = :'tok_revoked';
+
+-- Two backfill-shaped events, still RLS-bypassed: campaign_id set and
+-- campaign_send_id left NULL, exactly as the CSV importer writes history.
+-- One belongs to the linked campaign, one to a SIBLING campaign of the same
+-- brand. contact_id is populated deliberately — every engagement figure is
+-- count(distinct contact_id), so an event with a NULL contact contributes
+-- nothing and would make this test pass for the wrong reason. The two events
+-- use DIFFERENT contacts on purpose: with one shared contact, a join that
+-- wrongly swept in the sibling campaign would still report 1 and the leak
+-- would be invisible.
+select id as contact_alice from public.contacts where email = 'alice@a.test' \gset
+select id as contact_bob   from public.contacts where email = 'bob@a.test'   \gset
+
+insert into public.message_events
+  (brand_id, campaign_id, contact_id, provider_event_id, event_type, event_timestamp)
+values
+  (:'brand_a', :'camp_a',  :'contact_alice', 'EV-SHARE-BACKFILL-1', 'open', now()),
+  (:'brand_a', :'camp_a2', :'contact_bob',   'EV-SHARE-SIBLING-1',  'open', now());
 
 -- From here on: no JWT, no session, just the `anon` role.
 select public.login_as_anon();
@@ -536,6 +573,43 @@ select ok(
   (select row_to_json(r)::text !~ '(Brand B|Campaign B|Campaign A2|brand-b|22222222-2222|cccccccc-cccc-cccc-cccc-bbbb)'
      from public.get_shared_campaign_results(:'tok_ok', :'share_pw') r),
   'the anonymous result mentions nothing from brand B or any other campaign'
+);
+
+-- Regression guard for the quietly-wrong-number bug. get_shared_campaign_results
+-- once joined events on campaign_send_id alone, which is the live dispatcher's
+-- linkage; the CSV backfill records campaign_id instead. The result was a real
+-- Recipients figure beside zero engagement on every historical campaign — no
+-- error, just plausible zeros, on the one screen an external client sees. The
+-- assertions above cannot catch that: they check row count, campaign name and
+-- leakage, and all three pass happily while every figure reads zero.
+-- This single assertion pins both halves at once. Alice opened the linked
+-- campaign, Bob opened the sibling. Exactly 1 means the backfill linkage is
+-- counted; 0 means the old campaign_send_id-only join is back and history
+-- reads zero; 2 means the widened predicate has started dragging in another
+-- campaign's engagement.
+select is(
+  (select r.opened_count from public.get_shared_campaign_results(:'tok_ok', :'share_pw') r),
+  1::bigint,
+  'a backfill-linked event is counted, and a sibling campaign''s event is not'
+);
+
+-- "Not recorded" must stay distinguishable from "zero". camp_a2 has no send
+-- row, so recipient_count has to arrive as NULL; a coalesce to 0 here would
+-- tell an external client that nobody received a campaign whose recipient
+-- count was merely never captured. The figure is also the one number on this
+-- page a client is most likely to quote back, so a confident 0 is expensive.
+select is(
+  (select r.recipient_count from public.get_shared_campaign_results(:'tok_nosend', :'share_pw') r),
+  null::integer,
+  'a campaign with no recorded send reports NULL recipients, not a confident 0'
+);
+
+-- The corollary: a campaign that DOES have a recorded send still reports the
+-- frozen number, so the change above did not blank out the real figure.
+select isnt(
+  (select r.recipient_count from public.get_shared_campaign_results(:'tok_ok', :'share_pw') r),
+  null::integer,
+  'a campaign with a recorded send still reports its frozen recipient count'
 );
 
 -- Structural: the return signature itself has no identifier the visitor could
