@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Papa from 'papaparse';
+import BackToDashboard from '../components/BackToDashboard';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import {
@@ -618,6 +619,7 @@ export default function Contacts() {
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
           <div>
+            <BackToDashboard />
             <p className="text-sm font-medium text-slate-900">Contacts</p>
             <p className="text-xs text-slate-500">
               {profile?.brand?.name ?? 'Unknown brand'} · {profile?.role}

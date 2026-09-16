@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import BackToDashboard from '../components/BackToDashboard';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 
@@ -303,6 +304,7 @@ export default function Send() {
   if (!isOwner) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8">
+        <BackToDashboard />
         <h1 className="text-2xl font-semibold text-slate-900">Send a campaign</h1>
         <p className="mt-3 rounded-md border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
           Sending is limited to brand owners, so there is nothing to do on this page with your
@@ -318,6 +320,7 @@ export default function Send() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
+      <BackToDashboard />
       <h1 className="text-2xl font-semibold text-slate-900">Send a campaign</h1>
       <p className="mt-1 text-sm text-slate-600">
         Real messages go to real people from this page. The count you approve is the count that

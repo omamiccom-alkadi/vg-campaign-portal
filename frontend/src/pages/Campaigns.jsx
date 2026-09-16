@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Papa from 'papaparse';
+import BackToDashboard from '../components/BackToDashboard';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { buildHeaderMap, chunk, dataRowToRowNumber, sanitizeForDiagnostics } from '../lib/csvImport';
@@ -639,6 +640,7 @@ export default function Campaigns() {
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
         <header>
+          <BackToDashboard />
           <h1 className="text-xl font-semibold text-slate-900">Campaigns</h1>
           <p className="mt-1 text-sm text-slate-600">
             Import historical campaign data from a CSV. Figures marked “reported” are the

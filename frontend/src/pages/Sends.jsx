@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Papa from 'papaparse';
+import BackToDashboard from '../components/BackToDashboard';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { chunk, dataRowToRowNumber, sanitizeForDiagnostics } from '../lib/csvImport';
@@ -388,6 +389,7 @@ export default function Sends() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <header className="mb-6">
+        <BackToDashboard />
         <h1 className="text-2xl font-semibold text-slate-900">Sends</h1>
         <p className="mt-1 text-sm text-slate-600">
           Historical send batches, imported from the provider&rsquo;s log. These are records of
