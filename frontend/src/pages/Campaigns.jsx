@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Papa from 'papaparse';
 import BackToDashboard from '../components/BackToDashboard';
+import { batchOptionLabel, fullDate } from '../lib/batchLabel';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { buildHeaderMap, chunk, dataRowToRowNumber, sanitizeForDiagnostics } from '../lib/csvImport';
@@ -22,7 +23,7 @@ const BATCH_LIST_LIMIT = 50;
 
 // Warnings live in import_errors alongside rejections, distinguished by this
 // prefix. They describe rows that DID import, so they are excluded from
-// failed_rows â€” a dropped parent link is not a failed row. The alternative was
+// failed_rows — a dropped parent link is not a failed row. The alternative was
 // keeping them in client memory, where the KIL-0007 cross-brand link would
 // vanish on reload and leave no audit trail of a reference we refused.
 const WARNING_CODE_PREFIX = 'warning_';
@@ -38,13 +39,13 @@ function labelForCode(code) {
 }
 
 function formatMoney(value) {
-  if (value === null || value === undefined) return 'â€”';
+  if (value === null || value === undefined) return '—';
   return Number(value).toFixed(2);
 }
 
 function formatCount(value) {
   // NULL is an absence, 0 is a claim. Never render one as the other.
-  return value === null || value === undefined ? 'â€”' : Number(value).toLocaleString();
+  return value === null || value === undefined ? '—' : Number(value).toLocaleString();
 }
 
 export default function Campaigns() {
@@ -81,7 +82,7 @@ export default function Campaigns() {
   const [copied, setCopied] = useState('');
 
   // Only owners get the control. create_shared_link is security invoker, so an
-  // analyst's own RLS decides whether it can run â€” this is presentation, not
+  // analyst's own RLS decides whether it can run — this is presentation, not
   // the protection.
   const isOwner = profile?.role === 'owner';
 
@@ -301,7 +302,7 @@ export default function Campaigns() {
    *
    *  1. Write campaigns. Rows are split into inserts and updates by looking up
    *     existing external_ids first, rather than upserting on
-   *     (brand_id, external_id) â€” that index is PARTIAL (where external_id is
+   *     (brand_id, external_id) — that index is PARTIAL (where external_id is
    *     not null) and PostgREST cannot express the matching ON CONFLICT WHERE
    *     clause, so the inference would fail. Inserts go in as 'draft' because
    *     campaigns_insert_own_brand forbids a campaign being born 'sent'.
@@ -442,7 +443,7 @@ export default function Campaigns() {
         await failBatch(
           `${humanizeCampaignDbError(error, 'insert campaigns')} ` +
             `${insertedRows} campaigns were saved before this point; the rest were not. ` +
-            'Re-running this file is safe â€” campaigns already saved are updated, not duplicated.'
+            'Re-running this file is safe — campaigns already saved are updated, not duplicated.'
         );
         return;
       }
@@ -636,6 +637,11 @@ export default function Campaigns() {
   const historyTotalPages =
     historyCount === null ? 1 : Math.max(1, Math.ceil(historyCount / HISTORY_PAGE_SIZE));
 
+  const selectedBatch = batches.find((item) => item.id === selectedBatchId) ?? null;
+  // Everything the option label drops, shown in full beside the control.
+  const batchDetail = (batch) =>
+    `${batch.filename} · ${fullDate(batch.created_at)} · ${batch.failed_rows ?? 0} rejected`;
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
@@ -643,7 +649,7 @@ export default function Campaigns() {
           <BackToDashboard />
           <h1 className="text-xl font-semibold text-slate-900">Campaigns</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Import historical campaign data from a CSV. Figures marked â€œreportedâ€ are the
+            Import historical campaign data from a CSV. Figures marked “reported” are the
             client&rsquo;s own numbers and are stored exactly as the file gives them.
           </p>
         </header>
@@ -675,7 +681,7 @@ export default function Campaigns() {
 
         {phase === 'parsing' && (
           <section className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-600">
-            Reading {fileMeta?.name}â€¦
+            Reading {fileMeta?.name}…
           </section>
         )}
 
@@ -806,11 +812,11 @@ export default function Campaigns() {
                     <tr key={row.rowNumber}>
                       <td className="px-2 py-1.5 font-mono text-slate-700">{row.payload.external_id}</td>
                       <td className="px-2 py-1.5 text-slate-900">{row.payload.name}</td>
-                      <td className="px-2 py-1.5 text-slate-700">{row.payload.channel ?? 'â€”'}</td>
+                      <td className="px-2 py-1.5 text-slate-700">{row.payload.channel ?? '—'}</td>
                       <td className="px-2 py-1.5 text-slate-700">{formatMoney(row.payload.spend)}</td>
                       <td className="px-2 py-1.5 text-slate-700">{formatCount(row.payload.reported_sent)}</td>
-                      <td className="px-2 py-1.5 text-slate-700">{row.payload.sent_at_utc ?? 'â€”'}</td>
-                      <td className="px-2 py-1.5 font-mono text-slate-700">{row.parentExternalId ?? 'â€”'}</td>
+                      <td className="px-2 py-1.5 text-slate-700">{row.payload.sent_at_utc ?? '—'}</td>
+                      <td className="px-2 py-1.5 font-mono text-slate-700">{row.parentExternalId ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -841,7 +847,7 @@ export default function Campaigns() {
                   <ul className="mt-2 space-y-1 text-xs text-slate-700">
                     {parsed.mapped.warnings.map((warning) => (
                       <li key={`${warning.rowNumber}-${warning.code}`} className="rounded bg-slate-50 px-2 py-1">
-                        <span className="font-medium">Row {warning.rowNumber}</span> â€”{' '}
+                        <span className="font-medium">Row {warning.rowNumber}</span> —{' '}
                         {CAMPAIGN_WARNING_LABELS[warning.code] ?? warning.code}: {warning.message}
                       </li>
                     ))}
@@ -898,7 +904,7 @@ export default function Campaigns() {
 
             {phase === 'importing' ? (
               <div className="text-sm text-slate-600">
-                {progress.label}â€¦ step {progress.done} of {progress.total}
+                {progress.label}… step {progress.done} of {progress.total}
               </div>
             ) : (
               <div className="flex flex-wrap gap-3">
@@ -959,7 +965,7 @@ export default function Campaigns() {
               <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                 {result.parentWarnings} campaign{result.parentWarnings === 1 ? '' : 's'} named a
                 parent campaign we could not link, so {result.parentWarnings === 1 ? 'it was' : 'they were'}{' '}
-                saved with no parent. The campaigns themselves imported normally â€” see the warnings
+                saved with no parent. The campaigns themselves imported normally — see the warnings
                 in the import history below.
               </div>
             )}
@@ -1023,14 +1029,16 @@ export default function Campaigns() {
                   }}
                   className="mt-1 box-border w-full max-w-full rounded-md border border-slate-300 px-3 py-2 text-sm sm:max-w-xl"
                 >
-                  <option value="">Choose an importâ€¦</option>
+                  <option value="">Choose an import&hellip;</option>
                   {batches.map((batch) => (
-                    <option key={batch.id} value={batch.id}>
-                      {batch.filename} â€” {new Date(batch.created_at).toLocaleString()} (
-                      {batch.failed_rows ?? 0} rejected)
+                    <option key={batch.id} value={batch.id} title={batchDetail(batch)}>
+                      {batchOptionLabel(batch)}
                     </option>
                   ))}
                 </select>
+                {selectedBatch && (
+                  <p className="mt-2 text-xs text-slate-500">{batchDetail(selectedBatch)}</p>
+                )}
               </div>
               {selectedBatchId && historyRows.length > 0 && (
                 <button
@@ -1067,7 +1075,7 @@ export default function Campaigns() {
             {selectedBatchId && (
               <div className="mt-4">
                 {historyLoading ? (
-                  <p className="text-sm text-slate-500">Loadingâ€¦</p>
+                  <p className="text-sm text-slate-500">Loading…</p>
                 ) : historyRows.length === 0 ? (
                   <p className="text-sm text-slate-500">
                     Nothing was rejected or flagged in this import.
@@ -1115,7 +1123,7 @@ export default function Campaigns() {
                     </div>
                     <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
                       <span>
-                        {historyCount} row{historyCount === 1 ? '' : 's'} flagged â€” page{' '}
+                        {historyCount} row{historyCount === 1 ? '' : 's'} flagged — page{' '}
                         {historyPage + 1} of {historyTotalPages}
                       </span>
                       <span className="flex gap-2">
@@ -1157,7 +1165,7 @@ export default function Campaigns() {
           )}
 
           {listLoading ? (
-            <p className="text-sm text-slate-500">Loadingâ€¦</p>
+            <p className="text-sm text-slate-500">Loading…</p>
           ) : campaigns.length === 0 ? (
             <p className="text-sm text-slate-500">
               No campaigns yet. Import a CSV above to get started.
@@ -1252,10 +1260,10 @@ export default function Campaigns() {
                     {campaigns.map((campaign) => (
                       <tr key={campaign.id}>
                         <td className="px-2 py-2 font-mono text-xs text-slate-700">
-                          {campaign.external_id ?? 'â€”'}
+                          {campaign.external_id ?? '—'}
                         </td>
                         <td className="px-2 py-2 text-slate-900">{campaign.name}</td>
-                        <td className="px-2 py-2 text-slate-700">{campaign.channel ?? 'â€”'}</td>
+                        <td className="px-2 py-2 text-slate-700">{campaign.channel ?? '—'}</td>
                         <td className="px-2 py-2 text-slate-700">{campaign.status}</td>
                         <td className="px-2 py-2 text-slate-700">{formatMoney(campaign.spend)}</td>
                         <td className="px-2 py-2 text-slate-700">
@@ -1264,7 +1272,7 @@ export default function Campaigns() {
                         <td className="px-2 py-2 text-slate-700">
                           {campaign.sent_at_utc
                             ? new Date(campaign.sent_at_utc).toLocaleString()
-                            : 'â€”'}
+                            : '—'}
                         </td>
                         {isOwner && (
                           <td className="px-2 py-2">
@@ -1275,10 +1283,10 @@ export default function Campaigns() {
                                 disabled={sharing === campaign.id}
                                 className="text-xs font-medium text-slate-700 underline hover:text-slate-900 disabled:text-slate-400 disabled:no-underline"
                               >
-                                {sharing === campaign.id ? 'Creatingâ€¦' : 'Share results'}
+                                {sharing === campaign.id ? 'Creating…' : 'Share results'}
                               </button>
                             ) : (
-                              <span className="text-xs text-slate-400">â€”</span>
+                              <span className="text-xs text-slate-400">—</span>
                             )}
                           </td>
                         )}

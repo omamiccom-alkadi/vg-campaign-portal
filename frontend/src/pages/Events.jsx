@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Papa from 'papaparse';
 import BackToDashboard from '../components/BackToDashboard';
+import { batchOptionLabel, fullDate } from '../lib/batchLabel';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { chunk, dataRowToRowNumber, sanitizeForDiagnostics } from '../lib/csvImport';
@@ -98,7 +99,7 @@ export default function Events() {
 
       if (error) {
         // 42703/PGRST204 here means the column list names something the
-        // database does not have â€” in practice campaign_id or source_batch_id,
+        // database does not have — in practice campaign_id or source_batch_id,
         // i.e. 20260915170000 has not reached this environment. Saying that is
         // the difference between a five-second fix and a hunt.
         setListError(
@@ -406,7 +407,7 @@ export default function Events() {
           }
         }
 
-        // A refusal is a decision, not a hiccup â€” retrying it would only
+        // A refusal is a decision, not a hiccup — retrying it would only
         // repeat the same answer more slowly.
         if (lastStatus === 401 || lastStatus === 403 || lastStatus === 413) break;
 
@@ -531,6 +532,11 @@ export default function Events() {
     rejectedPage * REJECTED_PREVIEW_PAGE + REJECTED_PREVIEW_PAGE
   );
 
+  const selectedBatchRow = batches.find((item) => item.id === selectedBatch) ?? null;
+  // Everything the option label drops, shown in full beside the control.
+  const batchDetail = (batch) =>
+    `${batch.filename} · ${fullDate(batch.created_at)} · ${fmt(batch.inserted_rows)} stored, ${fmt(batch.failed_rows)} rejected`;
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <header className="mb-6">
@@ -558,7 +564,7 @@ export default function Events() {
               Drop an events CSV here, or click to choose one
             </span>
             <span className="mt-1 text-xs text-slate-500">
-              Large files are expected â€” these are the biggest exports.
+              Large files are expected — these are the biggest exports.
             </span>
             <input
               ref={fileInputRef}
@@ -870,12 +876,17 @@ export default function Events() {
             >
               <option value="">Select an import&hellip;</option>
               {batches.map((batch) => (
-                <option key={batch.id} value={batch.id}>
-                  {new Date(batch.created_at).toLocaleString()} &mdash; {batch.filename} (
-                  {fmt(batch.inserted_rows)} stored, {fmt(batch.failed_rows)} rejected)
+                <option key={batch.id} value={batch.id} title={batchDetail(batch)}>
+                  {batchOptionLabel(batch)}
                 </option>
               ))}
             </select>
+
+            {/* The option list is kept short so it cannot bleed off a narrow
+                screen; the full detail lives here, where it can wrap. */}
+            {selectedBatchRow && (
+              <p className="mt-2 text-xs text-slate-500">{batchDetail(selectedBatchRow)}</p>
+            )}
 
             {selectedBatch && (
               <div className="mt-4">

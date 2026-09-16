@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Papa from 'papaparse';
 import BackToDashboard from '../components/BackToDashboard';
+import { batchOptionLabel, fullDate } from '../lib/batchLabel';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import {
@@ -614,6 +615,10 @@ export default function Contacts() {
   const rowNumberNote =
     'Row numbers count the header as row 1, so the first contact is row 2. Blank lines are skipped, so in a file with blank lines this can differ from the physical line number.';
 
+  // Everything the option label drops, shown in full beside the control.
+  const batchDetail = (batch) =>
+    `${batch.filename} · ${fullDate(batch.created_at)} · ${batch.status} · ${batch.failed_rows} rejected of ${batch.total_rows}`;
+
   return (
     <div className="min-h-screen bg-slate-100">
       <header className="border-b border-slate-200 bg-white">
@@ -1099,14 +1104,19 @@ export default function Contacts() {
                 }}
                 className="box-border w-full max-w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
               >
-                <option value="">Select an import…</option>
+                <option value="">Select an import&hellip;</option>
                 {batches.map((batch) => (
-                  <option key={batch.id} value={batch.id}>
-                    {new Date(batch.created_at).toLocaleString()} · {batch.filename} ·{' '}
-                    {batch.status} · {batch.failed_rows} rejected of {batch.total_rows}
+                  <option key={batch.id} value={batch.id} title={batchDetail(batch)}>
+                    {batchOptionLabel(batch)}
                   </option>
                 ))}
               </select>
+
+              {/* The option list is kept short so it cannot bleed off a narrow
+                  screen; the full detail lives here, where it can wrap. */}
+              {selectedBatch && (
+                <p className="mt-2 text-xs text-slate-500">{batchDetail(selectedBatch)}</p>
+              )}
 
               {historyError && (
                 <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">

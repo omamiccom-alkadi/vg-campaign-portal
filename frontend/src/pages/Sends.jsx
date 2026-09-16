@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Papa from 'papaparse';
 import BackToDashboard from '../components/BackToDashboard';
+import { batchOptionLabel, fullDate } from '../lib/batchLabel';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { chunk, dataRowToRowNumber, sanitizeForDiagnostics } from '../lib/csvImport';
@@ -386,6 +387,11 @@ export default function Sends() {
   const stats = parsed?.mapped.stats;
   const brandCheck = stats?.brandCheck;
 
+  const selectedBatchRow = batches.find((item) => item.id === selectedBatch) ?? null;
+  // Everything the option label drops, shown in full beside the control.
+  const batchDetail = (batch) =>
+    `${batch.filename} · ${fullDate(batch.created_at)} · ${fmt(batch.inserted_rows)} recorded, ${fmt(batch.failed_rows)} rejected`;
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <header className="mb-6">
@@ -582,7 +588,7 @@ export default function Sends() {
           <h2 className="mb-2 text-lg font-medium text-slate-900">Importing&hellip;</h2>
           <p className="mb-3 text-sm text-slate-600">
             {progress.label}
-            {progress.batches > 0 && ` â€” batch ${progress.batch} of ${progress.batches}`}
+            {progress.batches > 0 && ` — batch ${progress.batch} of ${progress.batches}`}
           </p>
           <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
             <div
@@ -651,12 +657,17 @@ export default function Sends() {
             >
               <option value="">Select an import&hellip;</option>
               {batches.map((batch) => (
-                <option key={batch.id} value={batch.id}>
-                  {new Date(batch.created_at).toLocaleString()} &mdash; {batch.filename} (
-                  {fmt(batch.inserted_rows)} recorded, {fmt(batch.failed_rows)} rejected)
+                <option key={batch.id} value={batch.id} title={batchDetail(batch)}>
+                  {batchOptionLabel(batch)}
                 </option>
               ))}
             </select>
+
+            {/* The option list is kept short so it cannot bleed off a narrow
+                screen; the full detail lives here, where it can wrap. */}
+            {selectedBatchRow && (
+              <p className="mt-2 text-xs text-slate-500">{batchDetail(selectedBatchRow)}</p>
+            )}
 
             {selectedBatch && (
               <div className="mt-4">
