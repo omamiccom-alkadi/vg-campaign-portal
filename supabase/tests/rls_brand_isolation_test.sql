@@ -4,7 +4,7 @@
 -- Run with:
 --   supabase test db          (or)   pg_prove -d "$DB_URL" tests/*.sql
 --
--- BASELINE: 48/48 passing. The original 33 were established by two runs â€”
+-- BASELINE: 48/48 passing. The original 33 were established by two runs —
 -- locally against `supabase start`, and once against a throwaway cloud project
 -- (since deleted) to confirm identical behaviour on hosted Postgres. Tests 16
 -- and 17, the composite-FK cross-brand guards, arrived with
@@ -42,7 +42,7 @@
 --
 -- Test 35 was mutation-checked too, and that check is why it exists. Reverting
 -- get_shared_campaign_results to its campaign_send_id-only join made 35 fail
--- with `have: 0, want: 1` and left the other 42 passing â€” which is precisely
+-- with `have: 0, want: 1` and left the other 42 passing — which is precisely
 -- the problem: the suite had been fully green while every engagement figure on
 -- a historical campaign read zero on the public share page. Row-count, name and
 -- leakage assertions cannot see a wrong number. 35 is the one that can, so it
@@ -69,12 +69,12 @@
 --   * its failure messages start distinguishing "bad token" from "bad password"
 --   * revoked or expired links start resolving
 --   * its event join stops counting backfilled history, or starts counting a
---     campaign other than the linked one â€” both are wrong numbers shown to an
+--     campaign other than the linked one — both are wrong numbers shown to an
 --     external client, which .cursorrules rates worse than showing none
 --
 -- It runs as a superuser to seed fixtures, then drops to the `authenticated`
 -- role with a forged JWT claim for each user, and to the bare `anon` role for
--- the share-link path â€” i.e. it exercises the same code path a real client
+-- the share-link path — i.e. it exercises the same code path a real client
 -- hits, not a privileged shortcut.
 -- =============================================================================
 
@@ -223,7 +223,7 @@ select is(
   (select count(*)::int from pg_policies
     where schemaname = 'public' and cmd = 'DELETE'),
   0,
-  'no DELETE policy exists on any table â€” deletion is impossible via the API'
+  'no DELETE policy exists on any table — deletion is impossible via the API'
 );
 
 select is(
@@ -254,7 +254,7 @@ select ok(
 
 -- Event dedupe must stay scoped to a brand. The three historical files reuse
 -- one 'EV-' id space, so a global key would make whichever brand imported
--- first silently consume the others' ids â€” and would let one tenant's writes
+-- first silently consume the others' ids — and would let one tenant's writes
 -- block another's, which is an isolation failure even with no data leak.
 select ok(
   exists (
@@ -353,8 +353,8 @@ select throws_ok(
 
 -- Both of these name brand A in brand_id, so RLS is satisfied and waves them
 -- through: the composite foreign keys are the only thing left to refuse them.
--- Reduce either FK to a single-column reference â€” campaigns(id) or
--- import_batches(id) â€” and the row is accepted, handing brand A a readable
+-- Reduce either FK to a single-column reference — campaigns(id) or
+-- import_batches(id) — and the row is accepted, handing brand A a readable
 -- edge into brand B through any join that follows the link.
 select throws_ok(
   format($q$insert into public.campaigns (brand_id, name, source_batch_id)
@@ -416,7 +416,7 @@ select throws_ok(
 
 -- Run with RLS bypassed (reset role) on purpose: the policy above already
 -- stops clients, so this asserts the composite FK independently. It is the
--- structural half of brand-scoped resolution â€” the guarantee that even a
+-- structural half of brand-scoped resolution — the guarantee that even a
 -- service-role importer resolving 'CT-005612' or 'KIL-0007' against the wrong
 -- brand is refused by the database rather than filing one brand's engagement
 -- under another's.
@@ -445,7 +445,7 @@ select lives_ok(
   'first send for a campaign is accepted'
 );
 
--- A different idempotency key, i.e. a genuinely separate request â€” exactly the
+-- A different idempotency key, i.e. a genuinely separate request — exactly the
 -- case application-level "check then update" logic loses to.
 select throws_ok(
   format($q$insert into public.campaign_sends
@@ -484,8 +484,8 @@ select throws_ok(
 -- The guard index is predicated on `is_backfill = false`, so a client able to
 -- set the flag could place a send outside the guard and let two concurrent
 -- confirms both commit. It would also escape
--- campaign_sends_count_matches_snapshot. This row is otherwise valid â€” pending,
--- own brand, self-attributed â€” so the only thing that can reject it is the
+-- campaign_sends_count_matches_snapshot. This row is otherwise valid — pending,
+-- own brand, self-attributed — so the only thing that can reject it is the
 -- is_backfill clause in campaign_sends_insert_own_brand_owner.
 select public.login_as(:'owner_a');
 select throws_ok(
@@ -532,7 +532,7 @@ select throws_ok(
 );
 
 -- =============================================================================
--- E. Shared link â€” happy path through the anonymous entry point
+-- E. Shared link — happy path through the anonymous entry point
 -- =============================================================================
 -- Mint the links as owner A, i.e. through the real RLS-guarded path. Tokens are
 -- generated by the database, so they have to be captured here rather than
@@ -555,7 +555,7 @@ update public.shared_links set revoked_at = now() where token = :'tok_revoked';
 -- Two backfill-shaped events, still RLS-bypassed: campaign_id set and
 -- campaign_send_id left NULL, exactly as the CSV importer writes history.
 -- One belongs to the linked campaign, one to a SIBLING campaign of the same
--- brand. contact_id is populated deliberately â€” every engagement figure is
+-- brand. contact_id is populated deliberately — every engagement figure is
 -- count(distinct contact_id), so an event with a NULL contact contributes
 -- nothing and would make this test pass for the wrong reason. The two events
 -- use DIFFERENT contacts on purpose: with one shared contact, a join that
@@ -596,7 +596,7 @@ select ok(
 -- Regression guard for the quietly-wrong-number bug. get_shared_campaign_results
 -- once joined events on campaign_send_id alone, which is the live dispatcher's
 -- linkage; the CSV backfill records campaign_id instead. The result was a real
--- Recipients figure beside zero engagement on every historical campaign â€” no
+-- Recipients figure beside zero engagement on every historical campaign — no
 -- error, just plausible zeros, on the one screen an external client sees. The
 -- assertions above cannot catch that: they check row count, campaign name and
 -- leakage, and all three pass happily while every figure reads zero.
@@ -672,7 +672,7 @@ select is(
 );
 
 -- =============================================================================
--- F. Shared link â€” failures must be indistinguishable
+-- F. Shared link — failures must be indistinguishable
 -- =============================================================================
 -- Compared as message TEXT, in a single is(), rather than as two throws_ok
 -- calls. Two separate throws_ok assertions would both still pass if the
@@ -697,7 +697,7 @@ select is(
 );
 
 -- =============================================================================
--- G. Shared link â€” revoked and expired links are dead
+-- G. Shared link — revoked and expired links are dead
 -- =============================================================================
 -- Both reuse the correct password, so the only reason they can fail is the
 -- link's own state. Both must fail with the same generic message pinned in F,
