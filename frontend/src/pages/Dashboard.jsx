@@ -195,14 +195,17 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-slate-100">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+        {/* Wraps rather than stacking at a fixed breakpoint: the nav row's width
+            depends on the role (owners get an extra link), so letting it wrap
+            when it runs out of room beats guessing where that happens. */}
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-y-3 px-4 py-4">
           <div>
             <p className="text-sm font-medium text-slate-900">Client Campaign Portal</p>
             <p className="text-xs text-slate-500">
               {profile?.brand?.name ?? 'Unknown brand'} &middot; {profile?.role}
             </p>
           </div>
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
             <Link to="/contacts" className="text-slate-700 hover:underline">
               Contacts
             </Link>

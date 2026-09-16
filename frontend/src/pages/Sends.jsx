@@ -519,7 +519,8 @@ export default function Sends() {
                       Download as CSV
                     </button>
                   </div>
-                  <table className="w-full text-left text-xs">
+                  <div className="overflow-x-auto">
+                  <table className="min-w-full text-left text-xs">
                     <thead className="bg-slate-50 text-slate-600">
                       <tr>
                         <th className="px-2 py-1.5">Row</th>
@@ -544,6 +545,7 @@ export default function Sends() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               )}
             </div>
@@ -580,7 +582,7 @@ export default function Sends() {
           <h2 className="mb-2 text-lg font-medium text-slate-900">Importing&hellip;</h2>
           <p className="mb-3 text-sm text-slate-600">
             {progress.label}
-            {progress.batches > 0 && ` — batch ${progress.batch} of ${progress.batches}`}
+            {progress.batches > 0 && ` â€” batch ${progress.batch} of ${progress.batches}`}
           </p>
           <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
             <div
@@ -644,7 +646,7 @@ export default function Sends() {
                 setSelectedBatch(e.target.value);
                 setHistoryPage(0);
               }}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm sm:max-w-xl"
+              className="box-border w-full max-w-full rounded-md border border-slate-300 px-3 py-2 text-sm sm:max-w-xl"
               aria-label="Choose an import to review"
             >
               <option value="">Select an import&hellip;</option>
@@ -670,7 +672,8 @@ export default function Sends() {
                 )}
                 {historyRows.length > 0 && (
                   <>
-                    <table className="w-full text-left text-xs">
+                    <div className="overflow-x-auto">
+                    <table className="min-w-full text-left text-xs">
                       <thead className="bg-slate-50 text-slate-600">
                         <tr>
                           <th className="px-2 py-1.5">Row</th>
@@ -691,6 +694,7 @@ export default function Sends() {
                         ))}
                       </tbody>
                     </table>
+                    </div>
                     <div className="mt-2 flex items-center justify-between text-xs">
                       <span className="text-slate-600">
                         {fmt(historyPage * HISTORY_PAGE_SIZE + 1)}&ndash;
@@ -744,7 +748,8 @@ export default function Sends() {
 
         {sends.length > 0 && (
           <>
-            <table className="w-full text-left text-sm">
+            <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
                 <tr>
                   <th className="px-2 py-2">Batch</th>
@@ -778,6 +783,7 @@ export default function Sends() {
                 ))}
               </tbody>
             </table>
+            </div>
             <div className="mt-3 flex items-center justify-between text-sm">
               <span className="text-slate-600">
                 {fmt(page * SENDS_PAGE_SIZE + 1)}&ndash;

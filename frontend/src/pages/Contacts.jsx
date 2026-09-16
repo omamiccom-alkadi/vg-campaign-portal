@@ -617,7 +617,7 @@ export default function Contacts() {
   return (
     <div className="min-h-screen bg-slate-100">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-y-3 px-4 py-4">
           <div>
             <BackToDashboard />
             <p className="text-sm font-medium text-slate-900">Contacts</p>
@@ -1097,7 +1097,7 @@ export default function Contacts() {
                   setHistoryCount(null);
                   setHistoryRows([]);
                 }}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                className="box-border w-full max-w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
               >
                 <option value="">Select an import…</option>
                 {batches.map((batch) => (

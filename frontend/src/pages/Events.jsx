@@ -98,7 +98,7 @@ export default function Events() {
 
       if (error) {
         // 42703/PGRST204 here means the column list names something the
-        // database does not have — in practice campaign_id or source_batch_id,
+        // database does not have â€” in practice campaign_id or source_batch_id,
         // i.e. 20260915170000 has not reached this environment. Saying that is
         // the difference between a five-second fix and a hunt.
         setListError(
@@ -406,7 +406,7 @@ export default function Events() {
           }
         }
 
-        // A refusal is a decision, not a hiccup — retrying it would only
+        // A refusal is a decision, not a hiccup â€” retrying it would only
         // repeat the same answer more slowly.
         if (lastStatus === 401 || lastStatus === 403 || lastStatus === 413) break;
 
@@ -558,7 +558,7 @@ export default function Events() {
               Drop an events CSV here, or click to choose one
             </span>
             <span className="mt-1 text-xs text-slate-500">
-              Large files are expected — these are the biggest exports.
+              Large files are expected â€” these are the biggest exports.
             </span>
             <input
               ref={fileInputRef}
@@ -680,7 +680,8 @@ export default function Events() {
                       Download all as CSV
                     </button>
                   </div>
-                  <table className="w-full text-left text-xs">
+                  <div className="overflow-x-auto">
+                  <table className="min-w-full text-left text-xs">
                     <thead className="bg-slate-50 text-slate-600">
                       <tr>
                         <th className="px-2 py-1.5">Row</th>
@@ -705,6 +706,7 @@ export default function Events() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                   <div className="flex justify-between border-t border-slate-200 px-3 py-2">
                     <button
                       type="button"
@@ -864,7 +866,7 @@ export default function Events() {
                 setSelectedBatch(e.target.value);
                 setHistoryPage(0);
               }}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm sm:max-w-xl"
+              className="mt-1 box-border w-full max-w-full rounded-md border border-slate-300 px-3 py-2 text-sm sm:max-w-xl"
             >
               <option value="">Select an import&hellip;</option>
               {batches.map((batch) => (
@@ -890,7 +892,8 @@ export default function Events() {
                 )}
                 {historyRows.length > 0 && (
                   <>
-                    <table className="w-full text-left text-xs">
+                    <div className="overflow-x-auto">
+                    <table className="min-w-full text-left text-xs">
                       <thead className="bg-slate-50 text-slate-600">
                         <tr>
                           <th className="px-2 py-1.5">Row</th>
@@ -921,6 +924,7 @@ export default function Events() {
                         ))}
                       </tbody>
                     </table>
+                    </div>
                     <div className="mt-2 flex items-center justify-between text-xs">
                       <span className="text-slate-600">
                         {fmt(historyPage * HISTORY_PAGE_SIZE + 1)}&ndash;
@@ -974,7 +978,8 @@ export default function Events() {
 
         {events.length > 0 && (
           <>
-            <table className="w-full text-left text-sm">
+            <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
                 <tr>
                   <th className="px-2 py-2">Event ID</th>
@@ -1001,6 +1006,7 @@ export default function Events() {
                 ))}
               </tbody>
             </table>
+            </div>
             <div className="mt-3 flex items-center justify-between text-sm">
               <span className="text-slate-600">
                 {fmt(page * EVENTS_PAGE_SIZE + 1)}&ndash;
