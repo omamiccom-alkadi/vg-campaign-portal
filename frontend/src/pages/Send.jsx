@@ -597,41 +597,43 @@ export default function Send() {
         {history.length === 0 ? (
           <p className="mt-3 text-sm text-slate-600">No campaigns have been sent from here yet.</p>
         ) : (
-          <table className="mt-3 w-full text-left text-xs">
-            <thead className="text-slate-600">
-              <tr className="border-b border-slate-200">
-                <th className="px-2 py-1.5">When</th>
-                <th className="px-2 py-1.5">Status</th>
-                <th className="px-2 py-1.5 text-right">Approved</th>
-                <th className="px-2 py-1.5 text-right">Sent</th>
-                <th className="px-2 py-1.5">Provider batch</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((row) => (
-                <tr key={row.id} className="border-b border-slate-100">
-                  <td className="px-2 py-1.5">
-                    {row.dispatched_at ? new Date(row.dispatched_at).toLocaleString() : '\u2014'}
-                  </td>
-                  <td className="px-2 py-1.5">
-                    {row.status}
-                    {row.error_message && (
-                      <span className="block text-slate-500">{row.error_message}</span>
-                    )}
-                  </td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">
-                    {fmt(row.recipient_count)}
-                  </td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">
-                    {row.dispatch_summary ? fmt(row.dispatch_summary.dispatched) : '\u2014'}
-                  </td>
-                  <td className="px-2 py-1.5 font-mono text-slate-500">
-                    {row.provider_batch_id ?? '\u2014'}
-                  </td>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="text-slate-600">
+                <tr className="border-b border-slate-200">
+                  <th className="px-2 py-1.5">When</th>
+                  <th className="px-2 py-1.5">Status</th>
+                  <th className="px-2 py-1.5 text-right">Approved</th>
+                  <th className="px-2 py-1.5 text-right">Sent</th>
+                  <th className="px-2 py-1.5">Provider batch</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {history.map((row) => (
+                  <tr key={row.id} className="border-b border-slate-100">
+                    <td className="px-2 py-1.5">
+                      {row.dispatched_at ? new Date(row.dispatched_at).toLocaleString() : '\u2014'}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {row.status}
+                      {row.error_message && (
+                        <span className="block text-slate-500">{row.error_message}</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">
+                      {fmt(row.recipient_count)}
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">
+                      {row.dispatch_summary ? fmt(row.dispatch_summary.dispatched) : '\u2014'}
+                    </td>
+                    <td className="px-2 py-1.5 font-mono text-slate-500">
+                      {row.provider_batch_id ?? '\u2014'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>
